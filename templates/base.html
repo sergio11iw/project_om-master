@@ -1,0 +1,88 @@
+
+{% load static %}
+{% load crispy_forms_tags %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>МФ ОМЕТА</title>
+
+    <!-- STYLES -->
+    <link rel="stylesheet" href='{% static "css/defaulT.css" %}'/>
+
+</head>
+<body>
+    <!-- --- ==== HEADER ==== --- -->
+    <header class="header">
+        <div class="container">
+            <div class="header__inner">
+                <a href="/" class="site-logo">
+                    <div class="scale">
+                        <img src='{% static "images/Ometa.JPG" %}' alt="Logo" class="icon">
+                    </div>
+                </a>
+                <div class="burger" id="burger">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                </div>
+            </div>
+
+                    <nav class="nav"  id="nav">
+                        <div class="search_block">
+                            <form class="forms" action="{% url 'produkt_search' %}" method="GET">
+                            <input type="search" name="text" class="search" value="{{ text }}" placeholder="Поиск">
+                            <input type="submit" name="submit" class="submit" value="">
+                        </form>
+                        </div>
+                        <a href="/" class="bn-item">Главная</a>
+                        <a href="{% url 'produkts' %}" class="bn-item">Продукция</a>
+                        <a href="{% url 'profiles_profile' %}" class="bn-item">Личный кабинет</a>
+                    </nav>
+
+        </div>
+    </header>
+        {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}
+                <li {% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+            {% endfor %}
+        </ul>
+            {% endif %}
+
+{% block content %}
+{% endblock %}
+
+    <footer>
+        <h5>© 2017 Мебельная фабрика Омета</h5>
+    </footer>
+
+    <details class="call">
+        <summary>&#9742; Обратная связь</summary>
+        <form method="post" action="{% url 'feedback' %}">
+            {% csrf_token %}
+            <p>
+                <label>Имя</label>
+                <input type="text" name="name" required>
+            </p>
+            <p>
+                <label>Email</label>
+                <input type="email" name="email" required>
+            </p>
+            <p>
+                <label>Телефон</label>
+                <input type="tel" name="tel" required>
+            </p>
+            <button type="submit" class="btn btn-primary">Отправить</button>
+        </form>
+    </details>
+    <script
+      src="https://code.jquery.com/jquery-3.7.1.min.js"
+      integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
+      crossorigin="anonymous"></script>
+    <script src='{% static "js/indeX.js" %}'></script>
+
+</body>
+</html>
+

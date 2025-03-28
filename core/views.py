@@ -11,7 +11,10 @@ def main(request):
     notes = Note.objects.all()
     return render(request, 'main.html', {'notes': notes})
 def contacts(request):
-    return render(request, 'contacts.html',)
+    return render(request, 'contacts.html')
+def adminus(request):
+    shopUser = ShopUser.objects.all()
+    return render(request, 'adminus.html', {'shopUser': shopUser})
 def produkts(request):
     notes = Note.objects.all()
     page_number = request.GET.get('page', 1)

@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block content %}
+{% load static %}
+<h1>Админус</h1>
+<ul>
+    {% for shop in shopUser  %}
+        <li style="list-style: none">{{ shop.product_name }}</li>  <!-- Используйте двойные фигурные скобки для отображения переменной -->
+    {% endfor %}
+</ul>
+{% endblock %}

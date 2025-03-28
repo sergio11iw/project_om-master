@@ -154,13 +154,20 @@ function openPopup(event) {
     console.log(totalPrice)
     console.log(target.dataset.name)
 
+document.querySelector('.shopprod3').src = target.dataset.img || '';
+     document.getElementById('product_name_display').innerText = target.dataset.name; // Название товара
+    document.getElementById('product_color_display').innerText = target.dataset.color; // Цвет товара
+    document.getElementById('product_count_display').innerText = countValue; // Количество товара
+    document.getElementById('product_total_display').innerText = totalPrice; // Сумма
 
-    document.querySelector('.shopprod1').innerText = target.dataset.name
-    document.querySelector('.shopprod2').innerText = `Итого: ${totalPrice} руб`
-    document.querySelector('.shopprod3').src = target.dataset.img || '';
-    document.querySelector('.shopprod4').innerText = `Количество: ${countValue}`; // Устанавливаем количество
-    document.querySelector('.shopprod5').innerText = target.dataset.color
-    document.querySelector('.shopprod6').value = `${target.dataset.name} + ${totalPrice} + ${countValue} + ${target.dataset.color} + ${target.dataset.img || ''}`
+    // Устанавливаем значения в скрытые поля
+    document.getElementById('product_name').value = target.dataset.name; // Название товара
+    document.getElementById('product_color').value = target.dataset.color; // Цвет товара
+    document.getElementById('product_count').value = countValue; // Количество товара
+    document.getElementById('product_total').value = totalPrice; // Сумма
+
+
+//    document.querySelector('.shopprod6').value = `${target.dataset.name} + ${totalPrice} + ${countValue} + ${target.dataset.color} + ${target.dataset.img || ''}`
     console.log(target.dataset.color)
 
 }
@@ -171,34 +178,49 @@ function closePopup() {
     element.style.filter = 'none'
     const element2 = document.querySelector(".grop");
     if (element2) {
-        element2.style.top = '80px';}
+        element2.style.top = '110px';}
 }
+//function info(event) {
+//    // Получаем элемент, на который нажали
+//    const button = event.currentTarget;
+//    // Получаем значение data-color
+//    const color = button.getAttribute('data-color');
+//    const name = button.getAttribute('data-name');
+//    const price = button.getAttribute('data-price');
+//    const noteId = button.getAttribute('data-id'); // Убедитесь, что вы добавили data-id в кнопку
+//
+//    // Получаем количество из поля ввода
+//    const quantityInput = document.getElementById(`count-${noteId}`);
+//    const quantity = quantityInput ? quantityInput.value : 1; // Устанавливаем значение по умолчанию, если поле не найдено
+//
+//    // Выводим информацию в alert
+//    alert(`Товар: ${name}\nЦвет: ${color}\nКоличество: ${quantity}\nЦена: ${price} рублей`);
+//}
 
-$(".popup").on('submit', '.form-example', function(event){
-
-  event.preventDefault()
-  let form = $(".form-example")
-  let url = form.attr('action')
-
-  $.ajax({
-    type: 'POST',
-    url: url,
-    data: form.serialize(),
-    success: function(response) {
-            console.log(response);
-               if (response.success) {
-
-                    alert('Ваш заказ принят, мы свяжемся с вами в ближайшее время!');
-                    closePopup();
-                } else {
-                    alert('Произошла ошибка: ' + response.error);
-                }
-            },
-            error: function(xhr, status, error) {
-                alert('Ошибка при отправке данных: ' + error);
-            }
-  })
-});
+//$(".popup").on('submit', '.form-example', function(event){
+//
+//  event.preventDefault()
+//  let form = $(".form-example")
+//  let url = form.attr('action')
+//
+//  $.ajax({
+//    type: 'POST',
+//    url: url,
+//    data: form.serialize(),
+//    success: function(response) {
+//            console.log(response);
+//               if (response.success) {
+//                    alert('Ваш заказ принят, мы свяжемся с вами в ближайшее время!');
+//                    closePopup();
+//                } else {
+//                    alert('Произошла ошибка: ' + response.error);
+//                }
+//            },
+//            error: function(xhr, status, error) {
+//                alert('Ошибка при отправке данных: ' + error);
+//            }
+//  })
+//});
 // бургер меню
 // Получаем элементы бургер-меню и навигации
 const burger = document.getElementById('burger');
@@ -215,3 +237,77 @@ burger.addEventListener('click', () => {
 
 
 
+// Функция для добавления товара в корзину
+function info(event) {
+    const button = event.currentTarget; // Получаем элемент кнопки
+    const dataName = button.getAttribute('data-name');
+    const dataColor = button.getAttribute('data-color');
+    const dataPrice = button.getAttribute('data-price');
+    const noteId = button.getAttribute('data-id'); // Извлекаем ID товара
+
+    const countElement = document.getElementById(`count-${noteId}`); // Получаем элемент input по ID
+    const quantity = parseInt(countElement.value); // Извлекаем значение и преобразуем в число
+    console.log(dataName, dataColor, dataPrice, quantity)
+    // Отправляем данные на сервер
+    if (quantity < 1) {
+        alert("Количество должно быть больше 0.");
+        return;
+    }
+
+    // Создаем объект данных для отправки на сервер
+    const data = {
+        id: noteId,
+        name: dataName,
+        color: dataColor,
+        price: dataPrice,
+        quantity: quantity
+    };
+
+    // Отправляем данные на сервер
+    fetch(`/add_to_cart/${noteId}/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken') // Получаем CSRF-токен
+        },
+        body: JSON.stringify(data) // Отправляем данные в формате JSON
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.json();
+        }
+        throw new Error('Network response was not ok.');
+    })
+    .then(data => {
+        console.log(data.message); // Выводим сообщение об успешном добавлении
+        updateCartCount(); // Обновляем количество товаров в корзине
+    })
+    .catch(error => {
+        console.error('There was a problem with the fetch operation:', error);
+    });
+}
+
+// Функция для получения CSRF-токена
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Функция для обновления количества товаров в корзине
+function updateCartCount() {
+    fetch('/cart/count/')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('cart-count').innerText = data.count; // Обновляем элемент с количеством
+        });
+}

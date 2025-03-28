@@ -1,15 +1,17 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
-from .models import Note, User, ShopUser
+from .models import Note, User, ShopUser, Order, OrderItem
 from .forms import UserModelForm
 from django.contrib import messages
-from django.http import Http404, JsonResponse
-
+import json
+from .cart import Cart
+from django.http import JsonResponse
 def main(request):
     notes = Note.objects.all()
     return render(request, 'main.html', {'notes': notes})
-
+def contacts(request):
+    return render(request, 'contacts.html',)
 def produkts(request):
     notes = Note.objects.all()
     page_number = request.GET.get('page', 1)
@@ -25,14 +27,17 @@ def produkts(request):
 
 def produkt_search(request):
     text = request.GET.get('text', '').strip()
-    produkts = Note.objects.filter(Q(name__icontains=text) | Q(descr__icontains=text))
-
+    # Поиск с учетом регистра
+    produkts_case_sensitive = Note.objects.filter(Q(name__contains=text) | Q(descr__contains=text))
+    # Поиск без учета регистра
+    produkts_case_insensitive = Note.objects.filter(Q(name__icontains=text) | Q(descr__icontains=text))
+    # Объединяем результаты
+    produkts = produkts_case_sensitive | produkts_case_insensitive
     # Пагинация
     paginator = Paginator(produkts, 6)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-
-    return render(request, 'produkt_search.html', {'page_obj': page_obj, 'text': text})
+    return render(request, 'produkt_search.html', { 'page_obj': page_obj, 'text': text})
 
 def produkt_list(request, list_id):
     list = Note.objects.get(id=list_id)
@@ -53,28 +58,110 @@ def feedback(request):
     else:
         form = UserModelForm()
     return render(request, 'main.html',{'form': form})
-# def create_order(request):
-#     if request.method == 'POST':
-#         name = request.POST.get('name')
-#         tel = request.POST.get('tel')
-#         email = request.POST.get('email')
-#         other = request.POST.get('other')
-#
-#         order = ShopUser(name=name, tel=tel, email=email, other=other)
-#         order.save()  # Сохраняем заказ в базе данных
-#
-#         messages.success(request, 'Ваш заказ принят, мы свяжемся с вами в ближайшее время!')
-#         return redirect('main')
-#
-#     return render(request, 'main')
 def create_order(request):
     if request.method == 'POST':
         name = request.POST.get('name')
         tel = request.POST.get('tel')
         email = request.POST.get('email')
-        other = request.POST.get('other')
-        order = ShopUser(name=name, tel=tel, email=email, other=other)
+        product_name = request.POST.get('product_name')
+        product_color = request.POST.get('product_color')
+        product_count = request.POST.get('product_count')
+        product_total = request.POST.get('product_total')
+        print(
+            f"Name: {name}, Tel: {tel}, Email: {email}, Product Name: {product_name}, Product Color: {product_color}, Product Count: {product_count}, Product Total: {product_total}")
+        if not product_name or not product_color or not product_count or not product_total:
+            messages.error(request, 'Пожалуйста, заполните все поля для товара.')
+            return redirect('create_order')  # Вернуться на страницу с формой
+        order = ShopUser (
+            name=name,
+            tel=tel,
+            email=email,
+            product_name=product_name,
+            product_color=product_color,
+            product_count=product_count,
+            product_total=product_total
+        )
+        order.save()  # Сохраняем заказ в базе данных
+        messages.success(request, 'Ваш заказ принят, мы свяжемся с вами в ближайшее время!')
+        return redirect('main')
+    return render(request, 'produkts.html')
+def view_cart(request):
+    # del request.session['cart']
+    cart = Cart(request)
+    total_price = cart.get_total_price()  # Получаем общую сумму
+
+
+    return render(request, 'cart.html', {
+        'cart': cart,
+        'total_price': total_price,  # Передаем общую сумму в контекст
+    })
+
+def add_to_cart(request, note_id):
+    note = get_object_or_404(Note, id=note_id)  # Получаем товар по его ID
+    cart = Cart(request)  # Получаем объект корзины
+
+    if request.method == 'POST':
+        data = json.loads(request.body)  # Получаем данные из запроса
+        quantity = data.get('quantity', 1)  # Получаем количество из данных
+        color = data.get('color')  # Получаем цвет из данных
+        cart.add(note, quantity, color)  # Добавляем товар в корзину
+        return JsonResponse({'message': 'Товар добавлен в корзину!'})
+
+    return JsonResponse({'message': 'Ошибка при добавлении товара.'}, status=400)
+
+
+def remove_from_cart(request, note_id):
+    cart = Cart(request)
+    note = get_object_or_404(Note, id=note_id)
+
+    color = request.POST.get('color')
+    if color:
+        cart.remove(note, color)
+
+    # Перенаправление обратно в корзину
+    return redirect('cart_view')  # Убедитесь, что это имя совпадает с именем в urls.py
+
+def update_cart(request, note_id):
+    """Обновляет количество товара в корзине."""
+    cart = Cart(request)  # Получаем объект корзины
+    note = get_object_or_404(Note, id=note_id)  # Получаем товар по его ID
+
+    if request.method == 'POST':
+        quantity = int(request.POST.get('quantity', 1))  # Получаем новое количество из формы
+        color = request.POST.get('color')  # Получаем цвет из формы
+        if color:
+            cart.add(note, quantity)  # Обновляем количество товара
+        return redirect('cart_view')  # Перенаправляем на страницу корзины
+
+    return JsonResponse({'message': 'Ошибка при обновлении товара.'}, status=400)
+def cart_count(request):
+    cart = Cart(request)
+    return JsonResponse({'count': len(cart)})
+
+def create_order_cart(request):
+    if request.method == 'POST':
+        cart = Cart(request)
+        total_price = cart.get_total_price()
+
+        # Создаем новый заказ
+        order = Order(
+            name=request.POST['name'],
+            tel=request.POST['tel'],
+            email=request.POST['email'],
+            total_price=total_price
+        )
         order.save()
 
-        return JsonResponse({'success': True})
-    return JsonResponse({'success': False, 'error': 'Неверный метод запроса'})
+        # Сохраняем товары в заказе
+        for item in cart:
+            OrderItem.objects.create(
+                order=order,
+                product_id=item.note.id,
+                quantity=item.quantity,
+                price=item.price
+            )
+        print("Корзина до очистки:", cart.cart)  # Выводим содержимое корзины
+        cart.clear()  # Очистка корзины
+        print("Корзина после очистки:", cart.cart)
+
+        return redirect('order_success')
